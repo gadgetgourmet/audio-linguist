@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Linguist - AI-Powered Audio Splitter</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">        <header>
+            <h1><i class="fas fa-microphone-alt"></i> Audio Linguist</h1>
+            <p>AI-powered audio splitting with <strong>real Whisper AI</strong> for numbered language learning content</p>
+            <div style="background: #f0f7ff; padding: 0.75rem; border-radius: 8px; margin-top: 1rem; font-size: 0.9rem; color: #1e40af;">
+                <i class="fas fa-info-circle"></i> 
+                <strong>First-time setup:</strong> The AI model (39MB) will download automatically - this may take 1-2 minutes on first load.
+            </div>
+        </header>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <input type="file" id="audioFile" accept=".wav,.mp3,.m4a,.ogg" style="display: none;">
+                <p class="upload-text">Drop your audio file here or click to browse</p>
+                <p class="upload-subtext">Supports WAV, MP3, M4A, OGG formats</p>
+                <button class="browse-btn" onclick="document.getElementById('audioFile').click()">
+                    <i class="fas fa-folder-open"></i> Browse Files
+                </button>
+            </div>
+        </div>
+
+        <div class="status-section" id="statusSection" style="display: none;">
+            <div class="status-card">
+                <div class="status-icon">
+                    <i class="fas fa-info-circle"></i>
+                </div>
+                <div class="status-content">
+                    <div id="statusMessage">Ready to process</div>
+                    <div class="file-info" id="fileInfo"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-section" id="controlsSection" style="display: none;">
+            <div class="controls-card">
+                <h3><i class="fas fa-cogs"></i> Processing Options</h3>                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label for="minSegmentDuration">Min Segment (seconds):</label>
+                        <input type="range" id="minSegmentDuration" min="1.0" max="5.0" step="0.5" value="2.0">
+                        <span id="segmentTime">2.0s</span>
+                    </div>
+                </div><div class="control-buttons">
+                    <button class="process-btn" id="processBtn">
+                        <i class="fas fa-play"></i> Process Audio
+                    </button>
+                    <button class="download-all-btn" style="display: none;" id="downloadAllBtn">
+                        <i class="fas fa-download"></i> Download All Segments
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress-section" id="progressSection" style="display: none;">
+            <div class="progress-card">
+                <h3><i class="fas fa-spinner fa-spin"></i> Processing Audio</h3>
+                <div class="progress-info">
+                    <span id="progressText">Initializing...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-details">
+                    <div class="detail-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Elapsed: <span id="elapsedTime">0:00</span></span>
+                    </div>
+                    <div class="detail-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Segments found: <span id="segmentCount">0</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection" style="display: none;">
+            <div class="results-header">
+                <h2><i class="fas fa-list"></i> Extracted Segments</h2>
+                <div class="results-summary">
+                    <span class="summary-item">
+                        <i class="fas fa-music"></i>
+                        <span id="totalSegments">0</span> segments
+                    </span>
+                    <span class="summary-item">
+                        <i class="fas fa-clock"></i>
+                        <span id="totalDuration">0:00</span> total
+                    </span>
+                </div>
+            </div>
+            <div class="segments-container" id="segmentsContainer">
+                <!-- Segments will be dynamically added here -->
+            </div>
+        </div>
+
+        <footer>
+            <p>
+                <i class="fas fa-shield-alt"></i> 
+                All processing happens locally in your browser - your audio never leaves your device
+            </p>
+        </footer>    </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <!-- Load Xenova Transformers via CDN and make it globally available -->
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+        window.transformers = { pipeline };
+        console.log('✅ Transformers library loaded globally');
+    </script>
+    
+    <!-- Main JavaScript (now without ES6 imports) -->
+    <script src="audio-splitter.js"></script>
+</body>
+</html>
