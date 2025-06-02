@@ -1,5 +1,7 @@
 # Audio Linguist - AI-Powered Audio Splitter
 
+🚀 **[Live Demo](https://gadgetgourmet.github.io/audio-linguist)** | 📁 **[GitHub Repository](https://github.com/gadgetgourmet/audio-linguist)**
+
 A modern, client-side web application for automatically splitting audio files containing numbered language learning content.
 
 ## Features

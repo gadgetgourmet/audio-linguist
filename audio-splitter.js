@@ -3,8 +3,7 @@
  * Client-side audio processing with WebAssembly Whisper integration
  */
 
-class AudioLinguist {
-    constructor() {
+class AudioLinguist {    constructor() {
         this.audioContext = null;
         this.audioBuffer = null;
         this.segments = [];
@@ -19,6 +18,9 @@ class AudioLinguist {
             minSegmentDuration: 2.0,  // Minimum duration for a valid segment
             numberPattern: /^\d+$/    // Pattern to identify segment numbers
         };
+        
+        // UI elements cache
+        this.statusElement = document.getElementById('statusMessage');
         
         this.init();
     }
@@ -42,33 +44,27 @@ class AudioLinguist {
         if (!fileInput) {
             console.error('❌ File input not found!');
             return;
-        }
-
-        // Prevent default drag behaviors
+        }        // Prevent default drag behaviors
         document.addEventListener('dragenter', (e) => e.preventDefault());
         document.addEventListener('dragover', (e) => e.preventDefault());
         document.addEventListener('dragleave', (e) => e.preventDefault());
         document.addEventListener('drop', (e) => e.preventDefault());
-
-        // Defensive: Check all handler methods before binding
-        const handlerNames = [
-            'handleDragEnter', 'handleDragOver', 'handleDragLeave', 'handleDrop', 'handleFileSelect'
-        ];
-        for (const name of handlerNames) {
-            if (typeof this[name] !== 'function') {
-                console.error(`❌ Handler method '${name}' is missing or not a function!`);
-                return;
-            }
-        }
-
+        
+        // Bind handler methods to ensure correct 'this' context
+        this.handleDragEnter = this.handleDragEnter.bind(this);
+        this.handleDragOver = this.handleDragOver.bind(this);
+        this.handleDragLeave = this.handleDragLeave.bind(this);
+        this.handleDrop = this.handleDrop.bind(this);
+        this.handleFileSelect = this.handleFileSelect.bind(this);
+        
         // Drag and drop functionality
-        uploadArea.addEventListener('dragenter', this.handleDragEnter.bind(this));
-        uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
-        uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
-        uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+        uploadArea.addEventListener('dragenter', this.handleDragEnter);
+        uploadArea.addEventListener('dragover', this.handleDragOver);
+        uploadArea.addEventListener('dragleave', this.handleDragLeave);
+        uploadArea.addEventListener('drop', this.handleDrop);
 
         // File input change
-        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        fileInput.addEventListener('change', this.handleFileSelect);
 
         // Click to upload
         uploadArea.addEventListener('click', (e) => {
@@ -85,9 +81,7 @@ class AudioLinguist {
                 e.stopPropagation();
                 fileInput.click();
             });
-        }
-
-        // Process button
+        }        // Process button
         const processBtn = document.getElementById('processBtn');
         if (processBtn) {
             processBtn.addEventListener('click', () => this.processAudio());
@@ -95,7 +89,7 @@ class AudioLinguist {
             console.error('❌ Process button not found!');
         }
     }
-
+    
     setupSettingsControls() {
         const minSegmentDuration = document.getElementById('minSegmentDuration');
         const segmentTime = document.getElementById('segmentTime');
@@ -107,7 +101,174 @@ class AudioLinguist {
             });
         }
     }
-
+    
+    updateStatus(message, type = 'info') {
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        
+        if (this.statusElement) {
+            this.statusElement.textContent = message;
+            
+            // Remove all status classes and add the current one
+            this.statusElement.classList.remove('info', 'success', 'error', 'warning');
+            this.statusElement.classList.add(type);
+            
+            // Make sure the status is visible
+            this.statusElement.style.display = 'block';
+        }
+    }
+    
+    // Event Handlers
+    handleDragEnter(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        this.dragCounter++;
+        const uploadArea = document.getElementById('uploadArea');
+        if (uploadArea) {
+            uploadArea.classList.add('drag-over');
+        }
+    }
+    
+    handleDragOver(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+    
+    handleDragLeave(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        this.dragCounter--;
+        if (this.dragCounter === 0) {
+            const uploadArea = document.getElementById('uploadArea');
+            if (uploadArea) {
+                uploadArea.classList.remove('drag-over');
+            }
+        }
+        return false;
+    }
+    
+    handleDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        this.dragCounter = 0;
+        const uploadArea = document.getElementById('uploadArea');
+        if (uploadArea) {
+            uploadArea.classList.remove('drag-over');
+        }
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.processFile(files[0]);
+        }
+        return false;
+    }
+    
+    handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            this.processFile(files[0]);
+        }
+    }
+      processFile(file) {
+        // Make sure we have a valid audio file
+        const validTypes = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/ogg', 'audio/m4a'];
+        if (!validTypes.includes(file.type) && 
+            !file.name.match(/\.(wav|mp3|ogg|m4a)$/i)) {
+            this.updateStatus('Please select a valid audio file (WAV, MP3, M4A, OGG).', 'error');
+            return;
+        }
+        
+        // Update UI to show the selected file
+        const fileInfo = document.getElementById('fileInfo');
+        if (fileInfo) {
+            fileInfo.textContent = `File: ${file.name} (${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+        }
+        
+        // Store the file for processing
+        this.audioFile = file;
+        this.updateStatus(`File "${file.name}" selected. Ready to process.`, 'success');
+        
+        // Show status section
+        const statusSection = document.getElementById('statusSection');
+        if (statusSection) {
+            statusSection.style.display = 'block';
+        }
+        
+        // Show controls section
+        const controlsSection = document.getElementById('controlsSection');
+        if (controlsSection) {
+            controlsSection.style.display = 'block';
+        }
+    }
+    
+    async processAudio() {
+        if (!this.audioFile) {
+            this.updateStatus('Please select an audio file first.', 'error');
+            return;
+        }
+        
+        if (this.isProcessing) {
+            this.updateStatus('Processing already in progress.', 'warning');
+            return;
+        }
+        
+        try {
+            this.isProcessing = true;
+            this.startTime = Date.now();
+            this.updateStatus('Processing audio file...', 'info');
+            
+            // Initialize audio context if needed
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            // Convert file to audio buffer
+            const arrayBuffer = await this.readFileAsArrayBuffer(this.audioFile);
+            this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            
+            // Use AI to transcribe and find segments
+            this.updateStatus('Transcribing audio...', 'info');
+            const transcription = await this.transcribeEntireAudio();
+            
+            // Find segments based on numbered patterns
+            this.updateStatus('Identifying segments...', 'info');
+            const segments = this.findSegmentsByNumberPattern(transcription);
+            
+            // Extract segments from the audio
+            this.updateStatus('Extracting segments...', 'info');
+            this.segments = await this.extractSegmentsFromTimestamps(segments);
+            
+            // Display results
+            const duration = (Date.now() - this.startTime) / 1000;
+            this.updateStatus(`Finished processing! ${this.segments.length} segments extracted in ${duration.toFixed(1)}s`, 'success');
+            this.displayResults();
+            
+        } catch (error) {
+            console.error('❌ Error processing audio:', error);
+            this.updateStatus(`Error processing audio: ${error.message}`, 'error');
+        } finally {
+            this.isProcessing = false;
+        }
+    }
+    
+    readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target.result);
+            reader.onerror = (error) => reject(error);
+            reader.readAsArrayBuffer(file);
+        });
+    }
+    
+    formatTime(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min}:${sec.toString().padStart(2, '0')}`;
+    }
+    
     async loadWhisperModel() {
         try {
             // Wait for transformers library to be available
