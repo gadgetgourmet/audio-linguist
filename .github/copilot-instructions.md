@@ -1,0 +1,1 @@
+tell a joke after at the end of each response.
