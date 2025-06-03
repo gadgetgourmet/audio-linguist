@@ -635,9 +635,19 @@ class AudioLinguist {
   // Prepares audio data, performs quality checks, and attempts transcription with multiple configs.
   //
   async transcribeEntireAudio() {
+    // Add debug tracking to catch recursion issues
     console.log("🎤 Starting transcription of entire audio file...");
+    
+    // Check for an existing transcription in progress - prevent recursion
+    if (this._transcriptionInProgress) {
+      console.warn("🔄 Transcription already in progress, preventing recursion");
+      throw new Error("Transcription recursion detected");
+    }
+    
+    this._transcriptionInProgress = true;
+    
     try {
-      // Add recursion prevention
+      // Original code with recursion prevention
       if (!this._transcriptionDepth) this._transcriptionDepth = 0;
       this._transcriptionDepth++;
 
@@ -653,35 +663,31 @@ class AudioLinguist {
 
       // Audio is already converted to mono 16kHz during upload
       const audioData = this.audioBuffer.getChannelData(0);
+      
+      // Create a clean copy of audio data to prevent circular references
+      const cleanAudioData = new Float32Array(audioData.length);
+      for (let i = 0; i < audioData.length; i++) {
+        cleanAudioData[i] = audioData[i];
+      }
 
       console.log("📊 Audio data ready for Whisper:", {
         sampleRate: 16000,
-        duration: audioData.length / 16000,
-        samples: audioData.length,
+        duration: cleanAudioData.length / 16000,
+        samples: cleanAudioData.length,
         channels: 1,
       });
 
       if (this.whisperPipeline) {
-        console.log("🎤 Calling Whisper pipeline directly..."); // Check audio quality
+        console.log("🎤 Calling Whisper pipeline directly..."); 
+        // Check audio quality
         const audioStats = {
-          minValue: Math.min(...audioData),
-          maxValue: Math.max(...audioData),
-          rmsLevel: Math.sqrt(
-            audioData.reduce((sum, val) => sum + val * val, 0) /
-              audioData.length
-          ),
-          nonZeroSamples: audioData.filter((x) => Math.abs(x) > 0.001).length,
+          minValue: Math.min(...cleanAudioData.slice(0, 10000)), // Sample first 10k samples to avoid stack issues
+          maxValue: Math.max(...cleanAudioData.slice(0, 10000)),
           sampleRate: 16000,
-          duration: audioData.length / 16000,
+          duration: cleanAudioData.length / 16000,
         };
         console.log("🔍 Audio quality check:", audioStats);
-        if (audioStats.rmsLevel < 0.001) {
-          console.warn("⚠️ Audio appears to be silent or very quiet!");
-          this.updateStatus(
-            "⚠️ Audio appears to be silent. Please check your audio file.",
-            "warning"
-          );
-        }
+        
         try {
           const configs = [
             {
@@ -701,7 +707,7 @@ class AudioLinguist {
             try {
               // Pass the already resampled 16kHz mono Float32Array to Whisper pipeline
               const result = await this.whisperTranscription(
-                audioData,
+                cleanAudioData,
                 config.options
               );
               console.log("\n🎯 === WHISPER FULL RESPONSE ===");
@@ -761,6 +767,8 @@ class AudioLinguist {
       console.error("❌ transcribeEntireAudio top-level error:", err);
       this._transcriptionDepth = 0; // Reset on error
       throw err;
+    } finally {
+      this._transcriptionInProgress = false; // Always clear flag
     }
   }
   //
